@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "RedisReplicationTester": {
+      "commandName": "Project",
+      "commandLineArgs": "-t targets.json -a foobared"
+    }
+  }
+}
