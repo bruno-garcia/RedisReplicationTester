@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using StackExchange.Redis;
 
-namespace RedisReplicaTester
+namespace RedisReplicationTester
 {
     [Verb("test-replica-set", HelpText = @"Connects to a master and its slave and checks replication.")]
     internal class TestReplication

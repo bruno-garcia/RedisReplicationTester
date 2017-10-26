@@ -2,7 +2,7 @@
 using System;
 using Microsoft.Extensions.Logging;
 
-namespace CheckRedisDeployment
+namespace RedisReplicationTester
 {
     class Program
     {
@@ -11,9 +11,9 @@ namespace CheckRedisDeployment
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddConsole(LogLevel.Trace);
 
-            var result = Parser.Default.ParseArguments<TestReplicaSet>(args)
+            var result = Parser.Default.ParseArguments<TestReplication>(args)
                 .MapResult(
-                    o => o.Run(loggerFactory.CreateLogger<TestReplicaSet>()),
+                    o => o.Run(loggerFactory.CreateLogger<TestReplication>()),
                     errs => 1);
 
             Console.ReadKey();
