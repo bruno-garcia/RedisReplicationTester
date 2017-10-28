@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using StackExchange.Redis;
 
 namespace RedisReplicationTester
 {
@@ -19,6 +20,13 @@ namespace RedisReplicationTester
         {
             return new DnsEndPoint(host.Hostname, host.Port);
         }
+
+        public ConfigurationOptions ToRedisOptions(string auth) => new ConfigurationOptions
+        {
+            EndPoints = {new DnsEndPoint(Hostname, Port)},
+            Password = auth,
+            AllowAdmin = true
+        };
 
         public override string ToString()
         {

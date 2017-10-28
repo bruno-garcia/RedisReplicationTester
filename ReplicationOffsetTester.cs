@@ -1,54 +1,28 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading.Tasks;
 using CommandLine;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using StackExchange.Redis;
 
 namespace RedisReplicationTester
 {
-    [Verb("test-replication", HelpText = @"Connects to a master and its slave to check replication state.")]
-    internal class TestReplication
+    [Verb("offset", HelpText = @"Connects to a master and its slave to check replication offset.")]
+    internal class ReplicationOffsetTester : Command
     {
-        [Option('t', "targets-file", Required = true, HelpText = "The file containing the target redis servers.")]
-        public string TargetsFile { get; set; }
-
-        [Option('a', "auth", Required = true, HelpText = "The auth password for the redis servers.")]
-        public string Auth { get; set; }
-
-        private ILogger<TestReplication> _logger;
-
-        public int Run(ILogger<TestReplication> logger)
+        protected override void Test(Targets targets)
         {
-            _logger = logger;
-
-            _logger.LogInformation("Testing Redis replication using hosts from file: {targetsFile}", TargetsFile);
-
-            var targets = JsonConvert.DeserializeObject<Targets>(File.ReadAllText(TargetsFile));
-
-            try
-            {
-                var repl = VerifyMaster(targets);
-                VerifySlaves(targets.Slaves, repl);
-                return 0;
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Verification failed.");
-                return -1;
-            }
+            var repl = VerifyMaster(targets);
+            VerifySlaves(targets.Slaves, repl);
         }
 
         private (string replId, long replOffset) VerifyMaster(Targets targets)
         {
-            _logger.LogInformation("Connecting to master: {masterNode}", targets.Master);
+            Logger.LogInformation("Connecting to master: {masterNode}", targets.Master);
 
-            using (var multi = ConnectionMultiplexer.Connect(HostOptions(targets.Master)))
+            using (var multi = ConnectionMultiplexer.Connect(targets.Master.ToRedisOptions(Auth)))
             {
                 var master = multi.GetServer(targets.Master);
                 if (master.IsSlave)
@@ -58,13 +32,13 @@ namespace RedisReplicationTester
 
                 if (masterRepl.slaveCount != targets.Slaves.Count)
                 {
-                    _logger.LogWarning(
+                    Logger.LogWarning(
                         @"Targets file include {expectedSlaveCount} slaves but master reports {actualSlaveCount} connected.",
                         targets.Slaves.Count, masterRepl.slaveCount);
                 }
                 else
                 {
-                    _logger.LogInformation(@"Master {master} has {slavesConnected} slaves attached.",
+                    Logger.LogInformation(@"Master {master} has {slavesConnected} slaves attached.",
                         targets.Master,
                         masterRepl.slaveCount);
                 }
@@ -77,7 +51,7 @@ namespace RedisReplicationTester
         {
             try
             {
-                using (var multi = ConnectionMultiplexer.Connect(HostOptions(host)))
+                using (var multi = ConnectionMultiplexer.Connect(host.ToRedisOptions(Auth)))
                 {
                     var master = multi.GetServer(host);
                     if (!master.IsSlave)
@@ -94,7 +68,7 @@ Master offset: '{masterRepl.replOffset}'
 Slave offset:  '{slaveRepl.replOffset}'");
                     }
 
-                    _logger.LogInformation($"Slave {host} is up to date with master");
+                    Logger.LogInformation($"Slave {host} is up to date with master");
                 }
             }
             catch (Exception e)
@@ -115,7 +89,7 @@ Slave offset:  '{slaveRepl.replOffset}'");
 
         private void VerifySlaves(IReadOnlyCollection<Host> slaves, (string replId, long replOffset) repl)
         {
-            _logger.LogInformation("Connecting to {nodeCount} slave Redis servers...", slaves.Count);
+            Logger.LogInformation("Connecting to {nodeCount} slave Redis servers...", slaves.Count);
 
             var exs = new ConcurrentQueue<Exception>();
 
@@ -134,12 +108,5 @@ Slave offset:  '{slaveRepl.replOffset}'");
             if (exs.Any())
                 throw new AggregateException(exs);
         }
-
-        private ConfigurationOptions HostOptions(Host host) => new ConfigurationOptions
-        {
-            EndPoints = {new DnsEndPoint(host.Hostname, host.Port)},
-            Password = Auth,
-            AllowAdmin = true
-        };
     }
 }

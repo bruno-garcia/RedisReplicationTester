@@ -1,6 +1,4 @@
 ﻿using CommandLine;
-using System;
-using Microsoft.Extensions.Logging;
 
 namespace RedisReplicationTester
 {
@@ -8,15 +6,12 @@ namespace RedisReplicationTester
     {
         static int Main(string[] args)
         {
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddConsole(LogLevel.Trace);
-
-            var result = Parser.Default.ParseArguments<TestReplication>(args)
+            var result = Parser.Default.ParseArguments<ReplicationOffsetTester, PubSubTester>(args)
                 .MapResult(
-                    o => o.Run(loggerFactory.CreateLogger<TestReplication>()),
+                   (ReplicationOffsetTester o) => o.Run(),
+                   (PubSubTester o) => o.Run(),
                     errs => 1);
 
-            Console.ReadKey();
             return result;
         }
     }
